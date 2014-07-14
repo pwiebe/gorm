@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	testdb "github.com/erikstmartin/go-testdb"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
@@ -140,7 +141,7 @@ type Product struct {
 type Animal struct {
 	Counter   int64 `primaryKey:"yes"`
 	Name      string
-	From      string //test reserverd sql keyword as field name
+	From      string //test reserved sql keyword as field name
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -265,6 +266,18 @@ func TestFirstAndLast(t *testing.T) {
 	db.First(&users)
 	if len(users) != 1 {
 		t.Errorf("Find first record as map")
+	}
+}
+
+func TestFindSliceOfPointers(t *testing.T) {
+	var users []User
+	db.Find(&users)
+
+	var userPointers []*User
+	db.Find(&userPointers)
+
+	if len(users) == 0 || len(users) != len(userPointers) {
+		t.Errorf("Find slice of pointers")
 	}
 }
 
@@ -1070,7 +1083,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	if db.First(&Product{}, "code = '789'").Error != nil {
-		t.Errorf("Product 456 should be changed to 789")
+		t.Errorf("Product 123 should be changed to 789")
 	}
 
 	if db.Model(product2).Update("CreatedAt", time.Now().Add(time.Hour)).Error != nil {
@@ -1090,7 +1103,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	if db.First(&Animal{}, "name = 'Ferdinand'").Error == nil {
-		t.Errorf("Animal 'Fredinand' should be changed to 'Franz'")
+		t.Errorf("Animal 'Ferdinand' should be changed to 'Franz'")
 	}
 
 	if db.First(&Animal{}, "name = 'Robert'").Error != nil {
@@ -1098,7 +1111,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	if db.First(&Animal{}, "name = 'Franz'").Error != nil {
-		t.Errorf("Product 'nerdz' should be changed to 'Franz'")
+		t.Errorf("Animal 'nerdz' should be changed to 'Franz'")
 	}
 
 	if db.Model(animal2).Update("CreatedAt", time.Now().Add(time.Hour)).Error != nil {
@@ -2096,5 +2109,24 @@ func TestCreate(t *testing.T) {
 
 	if err := db.Create(&UserCompany{Id: 10, UserId: 10, CompanyId: 10}).Error; err == nil {
 		t.Error("Should not be able to create record with predefined duplicate Id")
+	}
+}
+
+func TestCompatibilityMode(t *testing.T) {
+	db, _ := gorm.Open("testdb", "")
+	testdb.SetQueryFunc(func(query string) (driver.Rows, error) {
+		columns := []string{"id", "name", "age"}
+		result := `
+		1,Tim,20
+		2,Joe,25
+		3,Bob,30
+		`
+		return testdb.RowsFromCSVString(columns, result), nil
+	})
+
+	var users []User
+	db.Find(&users)
+	if (users[0].Name != "Tim") || len(users) != 3 {
+		t.Errorf("Unexcepted result returned")
 	}
 }
