@@ -12,6 +12,10 @@ func (s *commonDialect) BinVar(i int) string {
 	return "?"
 }
 
+func (s *commonDialect) DbValue(value interface{}) interface{} {
+	return value
+}
+
 func (s *commonDialect) SupportLastInsertId() bool {
 	return true
 }

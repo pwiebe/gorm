@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/lib/pq/hstore"
+	"github.com/pub-burrito/pq/hstore"
 )
 
 type postgres struct {
@@ -14,6 +14,77 @@ type postgres struct {
 
 func (s *postgres) BinVar(i int) string {
 	return fmt.Sprintf("$%v", i)
+}
+
+func intSliceToDbValue(s interface{}) interface{} {
+	var cc string
+	rv := reflect.ValueOf(s)
+	switch l := rv.Len(); {
+	case l == 0:
+		cc = "{}"
+	case l == 1:
+		cc = fmt.Sprintf("{%d}", rv.Index(0).Int())
+	default:
+		cc = "{"
+		for i := 0; i < l-1; i++ {
+			cc = fmt.Sprintf("%s%d,", cc, rv.Index(i).Int())
+		}
+		cc = fmt.Sprintf("%s%d}", cc, rv.Index(l-1).Int())
+	}
+	return cc
+}
+
+func floatSliceToDbValue(s interface{}) interface{} {
+	var cc string
+	rv := reflect.ValueOf(s)
+	switch l := rv.Len(); {
+	case l == 0:
+		cc = "{}"
+	case l == 1:
+		cc = fmt.Sprintf("{%f}", rv.Index(0).Float())
+	default:
+		cc = "{"
+		for i := 0; i < l-1; i++ {
+			cc = fmt.Sprintf("%s%f,", cc, rv.Index(i).Float())
+		}
+		cc = fmt.Sprintf("%s%f}", cc, rv.Index(l-1).Float())
+	}
+	return cc
+}
+
+func stringSliceToDbValue(s interface{}) interface{} {
+	var cc string
+	rv := reflect.ValueOf(s)
+	switch l := rv.Len(); {
+	case l == 0:
+		cc = "{}"
+	case l == 1:
+		cc = fmt.Sprintf("{\"%s\"}", rv.Index(0).String())
+	default:
+		cc = "{"
+		for i := 0; i < l-1; i++ {
+			cc = fmt.Sprintf("%s\"%s\",", cc, rv.Index(i).String())
+		}
+		cc = fmt.Sprintf("%s\"%s\"}", cc, rv.Index(l-1).String())
+	}
+	return cc
+}
+
+func (s *postgres) DbValue(value interface{}) interface{} {
+	if reflect.ValueOf(value).Kind() == reflect.Slice {
+		switch reflect.TypeOf(value).Elem().Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			return intSliceToDbValue(value)
+		case reflect.String:
+			return stringSliceToDbValue(value)
+		case reflect.Float32, reflect.Float64:
+			return floatSliceToDbValue(value)
+		default:
+			return value
+		}
+
+	}
+	return value
 }
 
 func (s *postgres) SupportLastInsertId() bool {

@@ -13,6 +13,10 @@ func (s *mysql) BinVar(i int) string {
 	return "$$" // ?
 }
 
+func (s *mysql) DbValue(value interface{}) interface{} {
+	return value
+}
+
 func (s *mysql) SupportLastInsertId() bool {
 	return true
 }

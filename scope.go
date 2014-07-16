@@ -176,7 +176,7 @@ func (scope *Scope) CallMethod(name string) {
 
 // AddToVars add value as sql's vars, gorm will escape them
 func (scope *Scope) AddToVars(value interface{}) string {
-	scope.SqlVars = append(scope.SqlVars, value)
+	scope.SqlVars = append(scope.SqlVars, scope.Dialect().DbValue(value))
 	return scope.Dialect().BinVar(len(scope.SqlVars))
 }
 

@@ -11,6 +11,10 @@ func (s *sqlite3) BinVar(i int) string {
 	return "$$" // ?
 }
 
+func (s *sqlite3) DbValue(value interface{}) interface{} {
+	return value
+}
+
 func (s *sqlite3) SupportLastInsertId() bool {
 	return true
 }

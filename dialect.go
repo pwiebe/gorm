@@ -10,6 +10,7 @@ var timeType = reflect.TypeOf(time.Time{})
 
 type Dialect interface {
 	BinVar(i int) string
+	DbValue(value interface{}) interface{}
 	SupportLastInsertId() bool
 	SqlTag(value reflect.Value, size int) string
 	PrimaryKeyTag(value reflect.Value, size int) string
