@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/pub-burrito/pq/arrays"
 	"github.com/pub-burrito/pq/hstore"
 )
 
@@ -197,5 +198,35 @@ func (h *Hstore) Scan(value interface{}) error {
 		}
 	}
 
+	return nil
+}
+
+type ArrayType struct {
+	ActualDest reflect.Value
+}
+
+func NewArrayType(dest reflect.Value) *ArrayType {
+	return &ArrayType{ActualDest: dest}
+}
+
+func (a *ArrayType) Scan(value interface{}) error {
+	switch a.ActualDest.Type().Elem().Kind() {
+	case reflect.String:
+		arrays.Unmarshal(value.([]byte), a.ActualDest.Addr().Interface())
+	case reflect.Int, reflect.Int8, reflect.Int64:
+		if st := reflect.TypeOf(value); st.Kind() == reflect.Slice {
+			sv := reflect.ValueOf(value)
+			switch st.Elem().Kind() {
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+				reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				l := sv.Len()
+				a.ActualDest.Set(reflect.MakeSlice(a.ActualDest.Type(), l, l))
+				for i := 0; i < l; i++ {
+					a.ActualDest.Index(i).SetInt(sv.Index(i).Int())
+				}
+			}
+		}
+	}
+	// TODO: there are some error conditions!
 	return nil
 }

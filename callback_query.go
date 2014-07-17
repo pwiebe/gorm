@@ -4,8 +4,6 @@ import (
 	"reflect"
 	"strings"
 	"time"
-
-	"github.com/pub-burrito/pq/arrays"
 )
 
 func Query(scope *Scope) {
@@ -53,14 +51,12 @@ func Query(scope *Scope) {
 
 			columns, _ := rows.Columns()
 			var values []interface{}
-			slices := make(map[reflect.Value]*interface{})
 			for _, value := range columns {
 				field := elem.FieldByName(snakeToUpperCamel(strings.ToLower(value)))
 				if field.IsValid() {
 					if field.Kind() == reflect.Slice {
-						var intr interface{}
-						slices[field] = &intr
-						values = append(values, &intr)
+						// PJW: Future way of doing this would be to do actually put this array type into field.
+						values = append(values, NewArrayType(field))
 					} else {
 						values = append(values, field.Addr().Interface())
 					}
@@ -71,29 +67,6 @@ func Query(scope *Scope) {
 			}
 			scope.Err(rows.Scan(values...))
 
-			// TODO: PJW This should be done in postgres.go!!!
-			for k, v := range slices {
-				// should probably switch on source type as that is what drives this difference.  Integer type arrays
-				// seem to come back as arrays; string arrays come back as a postgres type string "{abc, def, ghi}", which
-				// must be parsed by pg/arrays.  This string is represented as a byte array.
-				switch k.Type().Elem().Kind() {
-				case reflect.String:
-					arrays.Unmarshal((*v).([]byte), k.Addr().Interface())
-				case reflect.Int, reflect.Int8, reflect.Int64:
-					if st := reflect.TypeOf(*v); st.Kind() == reflect.Slice {
-						sv := reflect.ValueOf(*v)
-						switch st.Elem().Kind() {
-						case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-							reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-							l := sv.Len()
-							k.Set(reflect.MakeSlice(k.Type(), l, l))
-							for i := 0; i < l; i++ {
-								k.Index(i).SetInt(sv.Index(i).Int())
-							}
-						}
-					}
-				}
-			}
 			if isSlice {
 				if isPtr {
 					dest.Set(reflect.Append(dest, elem.Addr()))
